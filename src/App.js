@@ -6,67 +6,57 @@ import * as d3 from "d3";
 import rewind from "@turf/rewind";
 
 function App() {
+  // to be input by user eventually
   const x0 = -75.6968;
   const y0 = 45.4083;
   const x1 = -75.6818;
   const y1 = 45.4204;
 
-  async function test() {
+  async function mapData() {
     const data = await axios
       .get(
         `https://api.openstreetmap.org/api/0.6/map?bbox=${x0},${y0},${x1},${y1}`
       )
       .then(result => result);
-    // .then(({ request: { responseXML } }) => responseXML);
-
-    // console.log({ data });
 
     const osmgeojsondata = data ? osmtogeojson(data.data) : null;
 
-    console.log({ osmgeojsondata });
-
     if (osmgeojsondata) {
-      var width = 1000,
-        height = 1000;
+      // should be based on page
+      const width = 1000;
+      const height = 1000;
 
-      var svg = d3
-        .select("body")
-        .append("svg")
-        .attr("viewBox", "0 0 " + width + " " + height)
+      const svg = d3
+        .select("svg")
+        .attr("viewBox", `0 0 ${width} ${height}`)
         .style("max-width", `${width}px`);
 
-      var projection = d3.geoMercator();
-      var path = d3.geoPath().projection(projection);
-
-      console.log(osmgeojsondata);
+      const projection = d3.geoMercator();
+      const path = d3.geoPath().projection(projection);
 
       //need to both reverse and only include the relevant info
       //filtering should be done in initial request, not here!!!
-      var fixed = osmgeojsondata.features
-        .map(function(f) {
-          return rewind(f, { reverse: true });
-        })
+      const filteredMapData = osmgeojsondata.features
+        .map(data => rewind(data, { reverse: true }))
         .filter(
-          x =>
-            x.id.includes("way") &&
-            !x.properties.building &&
-            !x.properties.parking &&
-            !x.properties.leisure &&
-            !x.properties.leisure
+          geojson =>
+            geojson.id.includes("way") &&
+            !geojson.properties.building &&
+            !geojson.properties.parking &&
+            !geojson.properties.leisure &&
+            !geojson.properties.leisure
         );
-
-      console.log(fixed);
 
       projection.fitSize([width, height], {
         type: "FeatureCollection",
-        features: fixed
+        features: filteredMapData
       });
 
       svg
         .append("g")
         .attr("class", "region")
         .selectAll("path")
-        .data(fixed)
+        .data(filteredMapData)
         .enter()
         .append("path")
         .attr("d", path)
@@ -76,9 +66,9 @@ function App() {
     }
   }
 
-  test();
+  mapData();
 
-  return <div />;
+  return <svg />;
 }
 
 export default App;
